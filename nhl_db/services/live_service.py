@@ -1,6 +1,6 @@
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import logging
 import requests
 
@@ -67,9 +67,29 @@ def _list_live_games_today(session: Optional[requests.Session] = None) -> List[i
 
 
 def watch_live_games(poll_seconds: int = 5) -> None:
+    """
+    Continuously watch live games and update the database.
+    
+    Args:
+        poll_seconds: Polling interval when there ARE live games (in seconds).
+                     Default is 5 seconds. Set to 0 to use config default.
+    
+    The function will run indefinitely:
+    - When live games exist: polls every `poll_seconds` (default: 5 seconds)
+    - When no live games: polls every 5 minutes (300 seconds)
+    """
+    from ..config import NO_GAMES_POLL_SECONDS, LIVE_GAMES_POLL_SECONDS
+    
+    # Use config default if poll_seconds is 0 or negative
+    if poll_seconds <= 0:
+        poll_seconds = LIVE_GAMES_POLL_SECONDS
+    
     session = get_configured_session()
     i = 0
     SESSION_REFRESH_INTERVAL = 50  # Recreate session every N iterations
+    
+    print(f"Starting watch-live service...")
+    print(f"Live games polling: {poll_seconds}s | No games polling: {NO_GAMES_POLL_SECONDS}s")
     
     while True:
         # Periodically refresh the session to prevent long-lived connection issues
@@ -79,14 +99,18 @@ def watch_live_games(poll_seconds: int = 5) -> None:
         
         try:
             live_ids = _list_live_games_today(session=session)
+            current_time = datetime.now().strftime("%H:%M:%S")
+            
             if not live_ids:
-                print("No LIVE games found.")
+                print(f"[{current_time}] No LIVE games found.")
+            else:
+                print(f"[{current_time}] Found {len(live_ids)} live game(s)")
             
             conn = get_db_connection()
             try:
                 for game_id in live_ids:
                     try:
-                        print(f"Watching game: {game_id}")
+                        print(f"  Watching game: {game_id}")
                         landing = fetch_game_landing(game_id, session=session)
                         box = fetch_game_boxscore(game_id, session=session)
                         pbp = fetch_game_pbp(game_id, session=session)
@@ -96,16 +120,17 @@ def watch_live_games(poll_seconds: int = 5) -> None:
 
                         plays = pbp.get("plays") or []
                         rows = [map_play(game_id, p) for p in plays]
-                        upsert_plays_with_conn(conn, rows)
+                        count = upsert_plays_with_conn(conn, rows)
+                        print(f"    → Updated {count} plays for game {game_id}")
                     except requests.exceptions.RequestException as e:
                         logger.error(f"Request error for game {game_id}: {e}", exc_info=True)
-                        print(f"Request error for game {game_id}: {e}")
-                        print("Continuing to next game...")
+                        print(f"  Request error for game {game_id}: {e}")
+                        print("  Continuing to next game...")
                         continue
                     except Exception as e:
                         logger.error(f"Unexpected error for game {game_id}: {e}", exc_info=True)
-                        print(f"Unexpected error for game {game_id}: {e}")
-                        print("Continuing to next game...")
+                        print(f"  Unexpected error for game {game_id}: {e}")
+                        print("  Continuing to next game...")
                         continue
             finally:
                 conn.close()
@@ -120,8 +145,10 @@ def watch_live_games(poll_seconds: int = 5) -> None:
 
         from time import sleep as _sleep
         if not live_ids:
-            _sleep(60)
+            print(f"Sleeping for {NO_GAMES_POLL_SECONDS}s (no games)...\n")
+            _sleep(NO_GAMES_POLL_SECONDS)
         else:
+            print(f"Sleeping for {poll_seconds}s (live games active)...\n")
             _sleep(max(1, int(poll_seconds)))
         i += 1
 

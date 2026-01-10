@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
+from datetime import time
 
 from dotenv import load_dotenv
 
@@ -17,5 +18,13 @@ def get_env(name: str, default: Optional[str] = None) -> str:
     if value is None:
         raise RuntimeError(f"Environment variable {name} is required")
     return value
+
+
+# Polling configuration for watch-live
+# Poll every 5 seconds when there are live games
+LIVE_GAMES_POLL_SECONDS = 5
+
+# Poll every 5 minutes (300 seconds) when there are no live games
+NO_GAMES_POLL_SECONDS = 300
 
 

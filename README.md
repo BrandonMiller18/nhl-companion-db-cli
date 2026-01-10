@@ -101,11 +101,14 @@ python app.py schedule sync --start-date 2024-01-01 --end-date 2024-01-31
 
 #### Live Games
 ```bash
-# Monitor a live game (updates every 10 seconds)
-python app.py live monitor --game-id 2023020001
+# Update a single game once
+python app.py update-live 2023020001
 
-# Update game state once
-python app.py live update --game-id 2023020001
+# Continuously watch all live games (5s when live, 5min when no games)
+python app.py watch-live
+
+# Watch live games with custom polling interval
+python app.py watch-live --poll-seconds 10
 ```
 
 ## Deployment to Heroku
@@ -138,27 +141,85 @@ heroku config:set DB_NAME=<database>
 git push heroku main
 ```
 
-4. Install Heroku Scheduler add-on:
+4. **Start the worker dyno** (continuously watches live games):
+```bash
+heroku ps:scale worker=1
+```
+
+The worker dyno runs `watch-live` continuously, automatically adjusting polling based on game activity. This is the core of the application and should always be running.
+
+5. (Optional) Install Heroku Scheduler add-on for additional commands:
 ```bash
 heroku addons:create scheduler:standard
 ```
 
-5. Configure scheduled jobs:
+6. (Optional) Configure scheduled jobs:
 ```bash
 heroku addons:open scheduler
 ```
 
 Add jobs in the Heroku Scheduler dashboard:
-- **Daily schedule sync**: `python app.py schedule sync --date $(date +%Y-%m-%d)`
-- **Hourly live game updates**: `python app.py live update-all`
+- **Daily schedule sync**: `python app.py sync-schedule --date $(date +%Y-%m-%d)`
+- **Weekly team sync**: `python app.py sync-teams`
+- **Weekly player sync**: `python app.py sync-players --team-id <id>` (or sync-all)
+
+### Managing the Worker Dyno
+
+The worker dyno continuously monitors live games and should always be running:
+
+```bash
+# Check dyno status
+heroku ps
+
+# Start the worker (if not running)
+heroku ps:scale worker=1
+
+# Stop the worker (for maintenance)
+heroku ps:scale worker=0
+
+# View worker logs
+heroku logs --tail --dyno worker
+```
 
 ### Running One-Off Commands
 
 ```bash
 # Run any command on Heroku
-heroku run python app.py teams sync
-heroku run python app.py schedule sync --date 2024-01-15
-heroku run python app.py live monitor --game-id 2023020001
+heroku run python app.py sync-teams
+heroku run python app.py sync-schedule --date 2024-01-15
+heroku run python app.py update-live 2023020001
+```
+
+## Polling Configuration
+
+The `watch-live` command uses a simple, efficient polling strategy based on whether live games are detected:
+
+| Condition | Polling Interval | Configuration |
+|-----------|------------------|---------------|
+| Live games detected | 5 seconds | `LIVE_GAMES_POLL_SECONDS` |
+| No live games | 5 minutes (300 seconds) | `NO_GAMES_POLL_SECONDS` |
+
+This approach optimizes API usage by polling frequently during active games and conserving resources when no games are live.
+
+### Customizing Polling Intervals
+
+Edit `nhl_db/config.py` to adjust the polling intervals:
+
+```python
+# Poll every 5 seconds when there are live games
+LIVE_GAMES_POLL_SECONDS = 5
+
+# Poll every 5 minutes (300 seconds) when there are no live games
+NO_GAMES_POLL_SECONDS = 300
+```
+
+You can also override the live games interval via command line:
+```bash
+# Use default (5 seconds for live games)
+python app.py watch-live
+
+# Custom interval for live games (10 seconds)
+python app.py watch-live --poll-seconds 10
 ```
 
 ## Environment Variables
@@ -209,32 +270,54 @@ See `test/schema.sql` for complete schema definition.
 
 ### Production Schedule
 
+**Core Service (Always Running):**
+- **Worker Dyno**: Runs `watch-live` continuously
+  - Automatically monitors all live games
+  - Polls every 5 seconds when games are live
+  - Polls every 5 minutes when no games are active
+  - No scheduler needed - runs 24/7
+
+**Optional Scheduled Jobs (via Heroku Scheduler):**
+
 1. **Daily Schedule Sync** (Run at 12:00 AM ET)
 ```bash
-python app.py schedule sync --date $(date +%Y-%m-%d)
+python app.py sync-schedule-dates $(date +%Y-%m-%d) $(date +%Y-%m-%d)
 ```
 
 2. **Team Sync** (Run weekly on Monday at 3:00 AM ET)
 ```bash
-python app.py teams sync
+python app.py sync-teams-records
 ```
 
 3. **Player Sync** (Run weekly on Monday at 4:00 AM ET)
 ```bash
-python app.py players sync-all
+python app.py sync-players-roster --team-id <id>
 ```
 
-4. **Live Game Monitoring** (Run every 10 minutes during game hours)
-```bash
-python app.py live update-all
-```
+Note: The worker dyno handles all live game monitoring automatically, so you don't need scheduled jobs for that.
 
 ## Monitoring and Logs
 
 ### Heroku Logs
 ```bash
+# View all logs
 heroku logs --tail --app your-db-cli-app-name
-heroku logs --source app
+
+# View worker dyno logs specifically
+heroku logs --tail --dyno worker
+
+# View recent logs
+heroku logs --tail --source app
+```
+
+### Worker Health Monitoring
+```bash
+# Check if worker is running
+heroku ps
+
+# Expected output:
+# === worker (Basic): python app.py watch-live (1)
+# worker.1: up 2024/01/15 12:00:00 (~ 1h ago)
 ```
 
 ### Database Verification
@@ -275,10 +358,10 @@ SELECT COUNT(*) FROM plays;
 python app.py schedule sync --date 2024-01-15
 
 # Test with a known game ID
-python app.py live update --game-id 2023020001
+python app.py update-live 2023020001
 
 # Test team sync
-python app.py teams sync --active-only
+python app.py sync-teams-records --active-only
 ```
 
 ### Debugging

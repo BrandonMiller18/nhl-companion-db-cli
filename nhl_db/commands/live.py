@@ -19,7 +19,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.set_defaults(func=_cmd_update_live)
 
     p2 = subparsers.add_parser("watch-live", help="Continuously watch all LIVE games and update DB")
-    p2.add_argument("--poll-seconds", type=int, default=5, help="Polling interval in seconds")
+    p2.add_argument(
+        "--poll-seconds", 
+        type=int, 
+        default=5, 
+        help="Polling interval when live games exist (default: 5 seconds). No games = 5 minutes."
+    )
     p2.set_defaults(func=_cmd_watch_live)
 
 
