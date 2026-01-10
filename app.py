@@ -16,26 +16,26 @@ def build_parser() -> argparse.ArgumentParser:
     try:
         from nhl_db.commands.teams import register as register_teams
         register_teams(sub)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to register teams command: {e}")
 
     try:
         from nhl_db.commands.players import register as register_players
         register_players(sub)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to register players command: {e}")
 
     try:
         from nhl_db.commands.schedule import register as register_schedule
         register_schedule(sub)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to register schedule command: {e}")
 
     try:
         from nhl_db.commands.live import register as register_live
         register_live(sub)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Failed to register live command: {e}")
 
     return parser
 
