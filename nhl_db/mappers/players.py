@@ -35,6 +35,7 @@ def to_player_rows(roster: List[Dict[str, Any]], team_id: int) -> List[Tuple[Any
         else:
             home_city = None
         home_country = p.get("birthCountry")
+        is_active = p.get("playerIsActive") 
         rows.append((
             pid,
             player_team_id,
@@ -45,6 +46,7 @@ def to_player_rows(roster: List[Dict[str, Any]], team_id: int) -> List[Tuple[Any
             headshot,
             home_city,
             home_country,
+            is_active,
         ))
     return rows
 

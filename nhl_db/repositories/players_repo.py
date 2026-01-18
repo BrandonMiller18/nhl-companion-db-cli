@@ -11,11 +11,11 @@ def upsert_players(rows: List[Tuple[Any, ...]]) -> None:
         return
     sql = (
         "INSERT INTO players (playerId, playerTeamId, playerFirstName, playerLastName, playerNumber, "
-        "playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+        "playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry, playerIsActive) "
+        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) "
         "ON DUPLICATE KEY UPDATE playerTeamId=VALUES(playerTeamId), playerFirstName=VALUES(playerFirstName), "
         "playerLastName=VALUES(playerLastName), playerNumber=VALUES(playerNumber), playerPosition=VALUES(playerPosition), "
-        "playerHeadshotUrl=VALUES(playerHeadshotUrl), playerHomeCity=VALUES(playerHomeCity), playerHomeCountry=VALUES(playerHomeCountry)"
+        "playerHeadshotUrl=VALUES(playerHeadshotUrl), playerHomeCity=VALUES(playerHomeCity), playerHomeCountry=VALUES(playerHomeCountry), playerIsActive=VALUES(playerIsActive)"
     )
     conn = get_db_connection()
     try:
@@ -35,7 +35,7 @@ def get_players_by_team(team_id: int) -> List[Dict[str, Any]]:
     """Fetch all players for a specific team."""
     sql = """
         SELECT playerId, playerTeamId, playerFirstName, playerLastName, playerNumber,
-               playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry
+               playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry, playerIsActive
         FROM players
         WHERE playerTeamId = %s
         ORDER BY playerLastName, playerFirstName
@@ -59,7 +59,7 @@ def get_player_by_id(player_id: int) -> Optional[Dict[str, Any]]:
     """Fetch a single player by player ID."""
     sql = """
         SELECT playerId, playerTeamId, playerFirstName, playerLastName, playerNumber,
-               playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry
+               playerPosition, playerHeadshotUrl, playerHomeCity, playerHomeCountry, playerIsActive
         FROM players
         WHERE playerId = %s
     """

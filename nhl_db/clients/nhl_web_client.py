@@ -57,6 +57,10 @@ def fetch_roster(tricode: str, season: str, team_id: int, session: Optional[requ
     web_players: List[Dict[str, Any]] = []
     for group in ("forwards", "defensemen", "goalies"):
         web_players.extend(data.get(group, []) or [])
+    
+    # Mark all NHL Web roster players as active (1 = true)
+    for p in web_players:
+        p["playerIsActive"] = 1
 
     # Build a set of player IDs present in NHL Web roster for dedupe
     web_ids = set()
@@ -87,6 +91,10 @@ def fetch_roster(tricode: str, season: str, team_id: int, session: Optional[requ
         birth_city_block: Optional[Dict[str, Any]] = {"default": birth_city} if birth_city else None
         birth_country = rp.get("birthCountry")
         current_team_id = rp.get("currentTeamId")
+        if rp.get("onRoster") == "Y":
+            is_active = 1
+        else:
+            is_active = 0
         mapped: Dict[str, Any] = {
             "id": rid,
             "firstName": first_name,
@@ -98,6 +106,7 @@ def fetch_roster(tricode: str, season: str, team_id: int, session: Optional[requ
             "birthCountry": birth_country,
             # Provide per-player team id from Records to override when applicable
             "playerTeamId": current_team_id,
+            "playerIsActive": is_active,
         }
         merged.append(mapped)
 
