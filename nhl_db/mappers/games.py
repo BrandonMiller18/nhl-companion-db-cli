@@ -60,6 +60,9 @@ def derive_game_fields_from_gamecenter(landing: Dict[str, Any], box: Dict[str, A
         except Exception:
             period = None
 
+
+    in_intermission = landing.get("clock").get("inIntermission")
+
     clock: Optional[str] = None
     raw_clock = landing.get("clock")
     if isinstance(raw_clock, dict):
@@ -79,6 +82,6 @@ def derive_game_fields_from_gamecenter(landing: Dict[str, Any], box: Dict[str, A
     home_sog = _safe_int(home.get("sog")) if home.get("sog") is not None else 0
     away_sog = _safe_int(away.get("sog")) if away.get("sog") is not None else 0
 
-    return (game_state, period, clock, home_score, away_score, home_sog, away_sog)
+    return (game_state, period, clock, in_intermission, home_score, away_score, home_sog, away_sog)
 
 

@@ -115,8 +115,8 @@ def watch_live_games(poll_seconds: int = 5) -> None:
                         box = fetch_game_boxscore(game_id, session=session)
                         pbp = fetch_game_pbp(game_id, session=session)
 
-                        game_state, period, clock, home_score, away_score, home_sog, away_sog = derive_game_fields_from_gamecenter(landing, box)
-                        update_game_fields_with_conn(conn, game_id, game_state, period, clock, home_score, away_score, home_sog, away_sog)
+                        game_state, period, clock, in_intermission, home_score, away_score, home_sog, away_sog = derive_game_fields_from_gamecenter(landing, box)
+                        update_game_fields_with_conn(conn, game_id, game_state, period, clock, in_intermission, home_score, away_score, home_sog, away_sog)
 
                         plays = pbp.get("plays") or []
                         rows = [map_play(game_id, p) for p in plays]

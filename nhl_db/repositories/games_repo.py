@@ -88,9 +88,9 @@ def upsert_games_with_conn(conn, rows: List[Tuple[Any, ...]]) -> None:  # type: 
         cur.close()
 
 
-def update_game_fields_with_conn(conn, game_id: int, game_state: Optional[str], period: Optional[int], clock: Optional[str], home_score: int, away_score: int, home_sog: int, away_sog: int) -> None:  # type: ignore[no-untyped-def]
+def update_game_fields_with_conn(conn, game_id: int, game_state: Optional[str], period: Optional[int], clock: Optional[str], in_intermission: bool, home_score: int, away_score: int, home_sog: int, away_sog: int) -> None:  # type: ignore[no-untyped-def]
     sql = (
-        "UPDATE games SET gameState=%s, gamePeriod=%s, gameClock=%s, gameHomeScore=%s, gameAwayScore=%s, "
+        "UPDATE games SET gameState=%s, gamePeriod=%s, gameClock=%s, gameInIntermission=%s, gameHomeScore=%s, gameAwayScore=%s, "
         "gameHomeSOG=%s, gameAwaySOG=%s WHERE gameId=%s"
     )
     cur = conn.cursor()
@@ -102,6 +102,7 @@ def update_game_fields_with_conn(conn, game_id: int, game_state: Optional[str], 
                     game_state,
                     period,
                     clock,
+                    in_intermission,
                     home_score,
                     away_score,
                     home_sog,
